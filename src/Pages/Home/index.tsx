@@ -9,16 +9,66 @@ import {
   TaskInput,
 } from "./styles";
 
+import { useForm } from "react-hook-form";
+import { useState } from "react";
+
+//controlled -> toda vez que o usuairo mudar a info, atualiza a informção, contendo esse novo valor, para que possa ser atualizado
+//uncontrolled ->
+
+//A função register recebe o nome do input assim retornando os metodos que são oque utilizamos para trabalharmos com inputs no JS(onChange, onBlur, onFocus)
+
+//O metodo ... pega todas as informações que o register possui, e acaba acomplando ao nosso input como se fossem propriedades
+
+interface Cycle {
+  id: string;
+  task: string;
+  minutesAmount: number;
+  isActive: boolean;
+}
+
 export function Home() {
+  const [cycles, setCycles] = useState<Cycle[]>([]);
+  const [activeCycleId, setActiveCycleId] = useState<string | null>(null);
+  const [amountSecondsPassed, setAmountSecondsPassed] = useState(0);
+
+  const { register, handleSubmit, watch } = useForm();
+
+  function handleCreateNewClycle(data: any) {
+    const id = String(new Date().getTime());
+
+    const newCycle: Cycle = {
+      id,
+      task: data.task,
+      minutesAmount: data.minutesAmount,
+    };
+    setCycles((state) => [...cycles, newCycle]);
+    setActiveCycleId(id);
+  }
+
+  const activeCycle = cycles.find((cycle) => cycle.id === activeCycleId);
+
+  const totalSeconds = activeCycle ? activeCycle.minutesAmount * 60 : 0;
+  const currentSeconds = activeCycle ? totalSeconds - amountSecondsPassed : 0;
+
+  const minutesAmount = Math.floor(currentSeconds / 60);
+  const secondsAmount = currentSeconds % 60;
+
+  const minutes = String(minutesAmount).padStart(2, "0");
+  const seconds = String(secondsAmount).padStart(2, "0");
+
+  const task = watch("task");
+  const isSubmitDisabled = !task;
+
   return (
     <HomeContainer>
-      <form action="">
+      <form onSubmit={handleSubmit(handleCreateNewClycle)} action="">
         <FormContainer>
           <label htmlFor="">Vou trabalhar em</label>
           <TaskInput
             id="task"
             list="task-suggestions"
             placeholder="De um Nome Para seu projeto"
+            {...register("task")}
           />
 
           <datalist id="task-suggestions">
@@ -36,17 +86,18 @@ export function Home() {
             step={5} /* Faz com quem Pule de 5 em 5 Minutos*/
             min={5}
             max={60}
+            {...register("minutesAmount", { valueAsNumber: true })}
           />
           <span>Minutos</span>
         </FormContainer>
         <CountdownContainer>
-          <span>0</span>
-          <span>0</span>
+          <span>{minutes[0]}</span>
+          <span>{minutes[1]}</span>
           <Separator>:</Separator>
-          <span>0</span>
-          <span>0</span>
+          <span>{seconds[0]}</span>
+          <span>{seconds[1]}</span>
         </CountdownContainer>
-        <StartCountdownButton disabled type="submit">
+        <StartCountdownButton disabled={isSubmitDisabled} type="submit">
           <Play size={24} />
           Começar
         </StartCountdownButton>
