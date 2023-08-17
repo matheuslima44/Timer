@@ -10,7 +10,8 @@ import {
 } from "./styles";
 
 import { useForm } from "react-hook-form";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { differenceInSeconds } from "date-fns";
 
 //controlled -> toda vez que o usuairo mudar a info, atualiza a informção, contendo esse novo valor, para que possa ser atualizado
 //uncontrolled ->
@@ -23,7 +24,7 @@ interface Cycle {
   id: string;
   task: string;
   minutesAmount: number;
-  isActive: boolean;
+  startDate: Date;
 }
 
 export function Home() {
@@ -33,6 +34,19 @@ export function Home() {
 
   const { register, handleSubmit, watch } = useForm();
 
+  const activeCycle = cycles.find((cycle) => cycle.id === activeCycleId);
+
+  useEffect(() => {
+    if (activeCycle) {
+      setInterval(() => {
+        setAmountSecondsPassed(
+          differenceInSeconds(new Date(), activeCycle.startDate)
+        );
+      }, 1000);
+    }
+  }, [activeCycle]); //Sempre ao utilizar uma variavel externa, precisamos incluir ela como dependencia do nosso useEffect, porem Cada vez que a nossa variavel
+  //activeCycle mudar, esse useEffect ira executar novamente
+
   function handleCreateNewClycle(data: any) {
     const id = String(new Date().getTime());
 
@@ -40,12 +54,11 @@ export function Home() {
       id,
       task: data.task,
       minutesAmount: data.minutesAmount,
+      startDate: new Date(),
     };
     setCycles((state) => [...cycles, newCycle]);
     setActiveCycleId(id);
   }
-
-  const activeCycle = cycles.find((cycle) => cycle.id === activeCycleId);
 
   const totalSeconds = activeCycle ? activeCycle.minutesAmount * 60 : 0;
   const currentSeconds = activeCycle ? totalSeconds - amountSecondsPassed : 0;
