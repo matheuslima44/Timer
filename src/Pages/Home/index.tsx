@@ -13,13 +13,6 @@ import { useForm } from "react-hook-form";
 import { useEffect, useState } from "react";
 import { differenceInSeconds } from "date-fns";
 
-//controlled -> toda vez que o usuairo mudar a info, atualiza a informção, contendo esse novo valor, para que possa ser atualizado
-//uncontrolled ->
-
-//A função register recebe o nome do input assim retornando os metodos que são oque utilizamos para trabalharmos com inputs no JS(onChange, onBlur, onFocus)
-
-//O metodo ... pega todas as informações que o register possui, e acaba acomplando ao nosso input como se fossem propriedades
-
 interface Cycle {
   id: string;
   task: string;
@@ -37,15 +30,20 @@ export function Home() {
   const activeCycle = cycles.find((cycle) => cycle.id === activeCycleId);
 
   useEffect(() => {
+    let interval: number;
+
     if (activeCycle) {
-      setInterval(() => {
+      interval = setInterval(() => {
         setAmountSecondsPassed(
           differenceInSeconds(new Date(), activeCycle.startDate)
         );
       }, 1000);
     }
-  }, [activeCycle]); //Sempre ao utilizar uma variavel externa, precisamos incluir ela como dependencia do nosso useEffect, porem Cada vez que a nossa variavel
-  //activeCycle mudar, esse useEffect ira executar novamente
+    return () => {
+      clearInterval(interval);
+    };
+  }, [activeCycle]); //Sempre ao utilizar uma variavel externa, precisamos incluir ela como dependencia do nosso useEffect,
+  //porem Cada vez que a nossa variavel activeCycle mudar, esse useEffect ira executar novamente
 
   function handleCreateNewClycle(data: any) {
     const id = String(new Date().getTime());
@@ -58,6 +56,7 @@ export function Home() {
     };
     setCycles((state) => [...cycles, newCycle]);
     setActiveCycleId(id);
+    setAmountSecondsPassed(0); // Ao recomeçar, o timer deve Zerar
   }
 
   const totalSeconds = activeCycle ? activeCycle.minutesAmount * 60 : 0;
@@ -68,6 +67,12 @@ export function Home() {
 
   const minutes = String(minutesAmount).padStart(2, "0");
   const seconds = String(secondsAmount).padStart(2, "0");
+
+  useEffect(() => {
+    if (activeCycle) {
+      document.title = `${minutes}:${seconds}`;
+    }
+  }, [minutes, seconds, activeCycle]);
 
   const task = watch("task");
   const isSubmitDisabled = !task;
@@ -118,3 +123,10 @@ export function Home() {
     </HomeContainer>
   );
 }
+
+//controlled -> toda vez que o usuairo mudar a info, atualiza a informção, contendo esse novo valor, para que possa ser atualizado
+//uncontrolled ->
+
+//A função register recebe o nome do input assim retornando os metodos que são oque utilizamos para trabalharmos com inputs no JS(onChange, onBlur, onFocus)
+
+//O metodo ... pega todas as informações que o register possui, e acaba acomplando ao nosso input como se fossem propriedades
