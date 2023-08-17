@@ -20,6 +20,7 @@ interface Cycle {
   minutesAmount: number;
   startDate: Date;
   interruptedDate?: Date; // Pode existir ou Não
+  fineshedDate?: Date;
 }
 
 export function Home() {
@@ -30,21 +31,42 @@ export function Home() {
   const { register, handleSubmit, watch } = useForm();
 
   const activeCycle = cycles.find((cycle) => cycle.id === activeCycleId);
+  const totalSeconds = activeCycle ? activeCycle.minutesAmount * 60 : 0;
 
   useEffect(() => {
     let interval: number;
 
     if (activeCycle) {
       interval = setInterval(() => {
-        setAmountSecondsPassed(
-          differenceInSeconds(new Date(), activeCycle.startDate)
+        const secondsDiferrence = differenceInSeconds(
+          new Date(),
+          activeCycle.startDate
         );
+
+        if (secondsDiferrence >= totalSeconds) {
+          setCycles((state) =>
+            state.map((cycle) => {
+              if (cycle.id === activeCycleId) {
+                return { ...cycle, fineshedDate: new Date() };
+              } else {
+                return cycle;
+              }
+            })
+          );
+
+          setAmountSecondsPassed(totalSeconds); // Faz com que o timer fique zerado ao finalizar
+
+          clearInterval(interval);
+        } else {
+          setAmountSecondsPassed(secondsDiferrence);
+        }
       }, 1000);
     }
     return () => {
       clearInterval(interval);
     };
-  }, [activeCycle]); //Sempre ao utilizar uma variavel externa, precisamos incluir ela como dependencia do nosso useEffect,
+  }, [activeCycle, totalSeconds, activeCycleId]);
+  //Sempre ao utilizar uma variavel externa, precisamos incluir ela como dependencia do nosso useEffect,
   //porem Cada vez que a nossa variavel activeCycle mudar, esse useEffect ira executar novamente
 
   function handleCreateNewClycle(data: any) {
@@ -62,8 +84,8 @@ export function Home() {
   }
 
   function handleInterruptCycle() {
-    setCycles(
-      cycles.map((cycle) => {
+    setCycles((state) =>
+      state.map((cycle) => {
         if (cycle.id === activeCycleId) {
           return { ...cycle, interruptedDate: new Date() };
         } else {
@@ -74,7 +96,6 @@ export function Home() {
     setActiveCycleId(null);
   }
 
-  const totalSeconds = activeCycle ? activeCycle.minutesAmount * 60 : 0;
   const currentSeconds = activeCycle ? totalSeconds - amountSecondsPassed : 0;
 
   const minutesAmount = Math.floor(currentSeconds / 60);
@@ -91,8 +112,6 @@ export function Home() {
 
   const task = watch("task");
   const isSubmitDisabled = !task;
-
-  console.log(cycles);
 
   return (
     <HomeContainer>
@@ -120,7 +139,7 @@ export function Home() {
             id="minutesAmount"
             placeholder="00"
             step={5} /* Faz com quem Pule de 5 em 5 Minutos*/
-            min={5}
+            min={1}
             max={60}
             disabled={!!activeCycle}
             {...register("minutesAmount", { valueAsNumber: true })}
