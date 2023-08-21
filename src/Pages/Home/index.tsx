@@ -1,75 +1,79 @@
 import { HandPalm, Play } from "phosphor-react";
+import { createContext, useState } from "react";
+
 import {
-  CountdownContainer,
-  FormContainer,
   HomeContainer,
-  MinutesAmountInput,
-  Separator,
   StartCountdownButton,
   StopCountdownButton,
-  TaskInput,
 } from "./styles";
-
-import { useForm } from "react-hook-form";
-import { useEffect, useState } from "react";
-import { differenceInSeconds } from "date-fns";
+import { Countdown } from "./components/CountDown";
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as zod from "zod";
+import { FormProvider, useForm } from "react-hook-form";
+import { NewCycleForm } from "./components/NewCycleForm";
 
 interface Cycle {
   id: string;
   task: string;
   minutesAmount: number;
   startDate: Date;
-  interruptedDate?: Date; // Pode existir ou Não
-  fineshedDate?: Date;
+  interruptedDate?: Date;
+  finishedDate?: Date;
 }
+
+interface CyclesContextType {
+  activeCycle: Cycle | undefined;
+  activeCycleId: string | null;
+  amountSecondsPassed: number;
+  markCurrentCycleAsFinished: () => void;
+  setSecondsPassed: (seconds: number) => void;
+}
+export const CyclesContext = createContext({} as CyclesContextType);
+
+const newCycleFormValidationSchema = zod.object({
+  task: zod.string().min(1, "Informe a tarefa"),
+  minutesAmount: zod
+    .number()
+    .min(5, "O ciclo precisa ser de no mínimo 5 minutos.")
+    .max(60, "O ciclo precisa ser de no máximo 60 minutos."),
+});
+
+type NewCycleFormData = zod.infer<typeof newCycleFormValidationSchema>;
 
 export function Home() {
   const [cycles, setCycles] = useState<Cycle[]>([]);
   const [activeCycleId, setActiveCycleId] = useState<string | null>(null);
   const [amountSecondsPassed, setAmountSecondsPassed] = useState(0);
 
-  const { register, handleSubmit, watch } = useForm();
+  const newCycleForm = useForm<NewCycleFormData>({
+    resolver: zodResolver(newCycleFormValidationSchema),
+    defaultValues: {
+      task: "",
+      minutesAmount: 0,
+    },
+  });
 
   const activeCycle = cycles.find((cycle) => cycle.id === activeCycleId);
-  const totalSeconds = activeCycle ? activeCycle.minutesAmount * 60 : 0;
 
-  useEffect(() => {
-    let interval: number;
+  const { handleSubmit, watch, reset } = newCycleForm;
 
-    if (activeCycle) {
-      interval = setInterval(() => {
-        const secondsDiferrence = differenceInSeconds(
-          new Date(),
-          activeCycle.startDate
-        );
+  function setSecondsPassed(seconds: number) {
+    setAmountSecondsPassed(seconds);
+  }
 
-        if (secondsDiferrence >= totalSeconds) {
-          setCycles((state) =>
-            state.map((cycle) => {
-              if (cycle.id === activeCycleId) {
-                return { ...cycle, fineshedDate: new Date() };
-              } else {
-                return cycle;
-              }
-            })
-          );
-
-          setAmountSecondsPassed(totalSeconds); // Faz com que o timer fique zerado ao finalizar
-
-          clearInterval(interval);
+  function markCurrentCycleAsFinished() {
+    setCycles((state) =>
+      state.map((cycle) => {
+        if (cycle.id === activeCycleId) {
+          return { ...cycle, finishedDate: new Date() };
         } else {
-          setAmountSecondsPassed(secondsDiferrence);
+          return cycle;
         }
-      }, 1000);
-    }
-    return () => {
-      clearInterval(interval);
-    };
-  }, [activeCycle, totalSeconds, activeCycleId]);
-  //Sempre ao utilizar uma variavel externa, precisamos incluir ela como dependencia do nosso useEffect,
-  //porem Cada vez que a nossa variavel activeCycle mudar, esse useEffect ira executar novamente
+      })
+    );
+  }
 
-  function handleCreateNewClycle(data: any) {
+  function handleCreateNewCycle(data: NewCycleFormData) {
     const id = String(new Date().getTime());
 
     const newCycle: Cycle = {
@@ -78,9 +82,12 @@ export function Home() {
       minutesAmount: data.minutesAmount,
       startDate: new Date(),
     };
-    setCycles((state) => [...cycles, newCycle]);
+
+    setCycles((staete) => [...staete, newCycle]);
     setActiveCycleId(id);
-    setAmountSecondsPassed(0); // Ao recomeçar, o timer deve Zerar
+    setAmountSecondsPassed(0);
+
+    reset();
   }
 
   function handleInterruptCycle() {
@@ -96,63 +103,27 @@ export function Home() {
     setActiveCycleId(null);
   }
 
-  const currentSeconds = activeCycle ? totalSeconds - amountSecondsPassed : 0;
-
-  const minutesAmount = Math.floor(currentSeconds / 60);
-  const secondsAmount = currentSeconds % 60;
-
-  const minutes = String(minutesAmount).padStart(2, "0");
-  const seconds = String(secondsAmount).padStart(2, "0");
-
-  useEffect(() => {
-    if (activeCycle) {
-      document.title = `${minutes}:${seconds}`;
-    }
-  }, [minutes, seconds, activeCycle]);
-
   const task = watch("task");
   const isSubmitDisabled = !task;
 
   return (
     <HomeContainer>
-      <form onSubmit={handleSubmit(handleCreateNewClycle)} action="">
-        <FormContainer>
-          <label htmlFor="">Vou trabalhar em</label>
-          <TaskInput
-            id="task"
-            list="task-suggestions"
-            placeholder="De um Nome Para seu projeto"
-            disabled={!!activeCycle}
-            {...register("task")}
-          />
+      <form onSubmit={handleSubmit(handleCreateNewCycle)} action="">
+        <CyclesContext.Provider
+          value={{
+            activeCycle,
+            activeCycleId,
+            markCurrentCycleAsFinished,
+            amountSecondsPassed,
+            setSecondsPassed,
+          }}
+        >
+          <FormProvider {...newCycleForm}>
+            <NewCycleForm />
+          </FormProvider>
+          <Countdown />
+        </CyclesContext.Provider>
 
-          <datalist id="task-suggestions">
-            <option value="Projeto 1" />
-            <option value="Projeto 2" />
-            <option value="Projeto 3" />
-            <option value="Projeto 4" />
-          </datalist>
-
-          <label htmlFor="minutesAmount">Durante</label>
-          <MinutesAmountInput
-            type="number"
-            id="minutesAmount"
-            placeholder="00"
-            step={5} /* Faz com quem Pule de 5 em 5 Minutos*/
-            min={1}
-            max={60}
-            disabled={!!activeCycle}
-            {...register("minutesAmount", { valueAsNumber: true })}
-          />
-          <span>Minutos</span>
-        </FormContainer>
-        <CountdownContainer>
-          <span>{minutes[0]}</span>
-          <span>{minutes[1]}</span>
-          <Separator>:</Separator>
-          <span>{seconds[0]}</span>
-          <span>{seconds[1]}</span>
-        </CountdownContainer>
         {activeCycle ? (
           <StopCountdownButton onClick={handleInterruptCycle} type="button">
             <HandPalm size={24} />
@@ -175,3 +146,5 @@ export function Home() {
 //A função register recebe o nome do input assim retornando os metodos que são oque utilizamos para trabalharmos com inputs no JS(onChange, onBlur, onFocus)
 
 //O metodo ... pega todas as informações que o register possui, e acaba acomplando ao nosso input como se fossem propriedades
+
+//Context   API -> Permite compartilharmos informaçoes entre varios componentes ao mesmo tempo
