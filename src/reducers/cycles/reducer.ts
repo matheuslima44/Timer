@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { produce } from "immer";
 
 import { ActionTypes } from "./actions";
@@ -12,8 +13,8 @@ export interface Cycle {
 }
 
 interface CyclesState {
-  cycle: Cycle[];
-  activeCycleId: string;
+  cycles: Cycle[];
+  activeCycleId: string | null;
 }
 
 export function cyclesReducer(state: CyclesState, action: any) {

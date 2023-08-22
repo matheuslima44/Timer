@@ -2,7 +2,7 @@ import { Cycle } from "./reducer";
 
 export enum ActionTypes {
   ADD_NEW_CYCLE = "ADD_NEW_CYCLE",
-  ITERRUPT_CURRENT_CYCLE = "ITERRUPT_CURRENT_CYCLE",
+  INTERRUPT_CURRENT_CYCLE = "INTERRUPT_CURRENT_CYCLE",
   MARK_CURRENT_CYCLE_AS_FINISHED = "MARK_CURRENT_CYCLE_AS_FINISHED",
 }
 
@@ -21,8 +21,8 @@ export function markCurrentCycleAsFinishedAction() {
   };
 }
 
-export function InterruptCurrentCycleAction() {
+export function interruptCurrentCycleAction() {
   return {
-    type: ActionTypes.ITERRUPT_CURRENT_CYCLE,
+    type: ActionTypes.INTERRUPT_CURRENT_CYCLE,
   };
 }

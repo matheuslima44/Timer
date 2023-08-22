@@ -1,17 +1,17 @@
+import { differenceInSeconds } from "date-fns";
 import {
-  ReactNode,
   createContext,
-  useState,
-  useReducer,
+  ReactNode,
   useEffect,
+  useReducer,
+  useState,
 } from "react";
-import { Cycle, cyclesReducer } from "../reducers/cycles/reducer";
 import {
-  InterruptCurrentCycleAction,
   addNewCycleAction,
+  interruptCurrentCycleAction,
   markCurrentCycleAsFinishedAction,
 } from "../reducers/cycles/actions";
-import { differenceInSeconds } from "date-fns";
+import { Cycle, cyclesReducer } from "../reducers/cycles/reducer";
 
 interface CreateCycleData {
   task: string;
@@ -26,19 +26,19 @@ interface CyclesContextType {
   markCurrentCycleAsFinished: () => void;
   setSecondsPassed: (seconds: number) => void;
   createNewCycle: (data: CreateCycleData) => void;
-  InterruptCurrentCycle: () => void;
+  interruptCurrentCycle: () => void;
 }
 
 export const CyclesContext = createContext({} as CyclesContextType);
 
 interface CyclesContextProviderProps {
-  children: ReactNode; //Qualquer JSX Valido, (divs, components, etc...)
+  children: ReactNode;
 }
 
 export function CyclesContextProvider({
   children,
 }: CyclesContextProviderProps) {
-  const [CyclesState, dispatch] = useReducer(
+  const [cyclesState, dispatch] = useReducer(
     cyclesReducer,
     {
       cycles: [],
@@ -46,7 +46,7 @@ export function CyclesContextProvider({
     },
     (initialState) => {
       const storedStateAsJSON = localStorage.getItem(
-        "@Projeto-Matheus-Timer:cycles-state-1.0.0"
+        "@ignite-timer:cycles-state-1.0.0"
       );
 
       if (storedStateAsJSON) {
@@ -57,7 +57,7 @@ export function CyclesContextProvider({
     }
   );
 
-  const { cycles, activeCycleId } = CyclesState;
+  const { cycles, activeCycleId } = cyclesState;
   const activeCycle = cycles.find((cycle) => cycle.id === activeCycleId);
 
   const [amountSecondsPassed, setAmountSecondsPassed] = useState(() => {
@@ -69,13 +69,10 @@ export function CyclesContextProvider({
   });
 
   useEffect(() => {
-    const stateJSON = JSON.stringify(CyclesState);
+    const stateJSON = JSON.stringify(cyclesState);
 
-    localStorage.setItem(
-      "@Projeto-Matheus-Timer:cycles-state-1.0.0",
-      stateJSON
-    );
-  }, [CyclesState]); //Aplicação para salvar no localStorage
+    localStorage.setItem("@ignite-timer:cycles-state-1.0.0", stateJSON);
+  }, [cyclesState]);
 
   function setSecondsPassed(seconds: number) {
     setAmountSecondsPassed(seconds);
@@ -100,8 +97,8 @@ export function CyclesContextProvider({
     setAmountSecondsPassed(0);
   }
 
-  function InterruptCurrentCycle() {
-    dispatch(InterruptCurrentCycleAction());
+  function interruptCurrentCycle() {
+    dispatch(interruptCurrentCycleAction());
   }
 
   return (
@@ -114,7 +111,7 @@ export function CyclesContextProvider({
         amountSecondsPassed,
         setSecondsPassed,
         createNewCycle,
-        InterruptCurrentCycle,
+        interruptCurrentCycle,
       }}
     >
       {children}
