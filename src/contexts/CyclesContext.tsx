@@ -1,17 +1,21 @@
-import { ReactNode, createContext, useState } from "react";
+import {
+  ReactNode,
+  createContext,
+  useState,
+  useReducer,
+  useEffect,
+} from "react";
+import { Cycle, cyclesReducer } from "../reducers/cycles/reducer";
+import {
+  InterruptCurrentCycleAction,
+  addNewCycleAction,
+  markCurrentCycleAsFinishedAction,
+} from "../reducers/cycles/actions";
+import { differenceInSeconds } from "date-fns";
 
 interface CreateCycleData {
   task: string;
   minutesAmount: number;
-}
-
-interface Cycle {
-  id: string;
-  task: string;
-  minutesAmount: number;
-  startDate: Date;
-  interruptedDate?: Date;
-  finishedDate?: Date;
 }
 
 interface CyclesContextType {
@@ -34,26 +38,51 @@ interface CyclesContextProviderProps {
 export function CyclesContextProvider({
   children,
 }: CyclesContextProviderProps) {
-  const [cycles, setCycles] = useState<Cycle[]>([]);
-  const [activeCycleId, setActiveCycleId] = useState<string | null>(null);
-  const [amountSecondsPassed, setAmountSecondsPassed] = useState(0);
+  const [CyclesState, dispatch] = useReducer(
+    cyclesReducer,
+    {
+      cycles: [],
+      activeCycleId: null,
+    },
+    (initialState) => {
+      const storedStateAsJSON = localStorage.getItem(
+        "@Projeto-Matheus-Timer:cycles-state-1.0.0"
+      );
 
+      if (storedStateAsJSON) {
+        return JSON.parse(storedStateAsJSON);
+      }
+
+      return initialState;
+    }
+  );
+
+  const { cycles, activeCycleId } = CyclesState;
   const activeCycle = cycles.find((cycle) => cycle.id === activeCycleId);
+
+  const [amountSecondsPassed, setAmountSecondsPassed] = useState(() => {
+    if (activeCycle) {
+      return differenceInSeconds(new Date(), new Date(activeCycle.startDate));
+    }
+
+    return 0;
+  });
+
+  useEffect(() => {
+    const stateJSON = JSON.stringify(CyclesState);
+
+    localStorage.setItem(
+      "@Projeto-Matheus-Timer:cycles-state-1.0.0",
+      stateJSON
+    );
+  }, [CyclesState]); //Aplicação para salvar no localStorage
 
   function setSecondsPassed(seconds: number) {
     setAmountSecondsPassed(seconds);
   }
 
   function markCurrentCycleAsFinished() {
-    setCycles((state) =>
-      state.map((cycle) => {
-        if (cycle.id === activeCycleId) {
-          return { ...cycle, finishedDate: new Date() };
-        } else {
-          return cycle;
-        }
-      })
-    );
+    dispatch(markCurrentCycleAsFinishedAction());
   }
 
   function createNewCycle(data: CreateCycleData) {
@@ -66,22 +95,13 @@ export function CyclesContextProvider({
       startDate: new Date(),
     };
 
-    setCycles((staete) => [...staete, newCycle]);
-    setActiveCycleId(id);
+    dispatch(addNewCycleAction(newCycle));
+
     setAmountSecondsPassed(0);
   }
 
   function InterruptCurrentCycle() {
-    setCycles((state) =>
-      state.map((cycle) => {
-        if (cycle.id === activeCycleId) {
-          return { ...cycle, interruptedDate: new Date() };
-        } else {
-          return cycle;
-        }
-      })
-    );
-    setActiveCycleId(null);
+    dispatch(InterruptCurrentCycleAction());
   }
 
   return (
@@ -101,3 +121,5 @@ export function CyclesContextProvider({
     </CyclesContext.Provider>
   );
 }
+
+//Utilizamos o useReducer, quando queremos armazenar informações quando elas são mais complexas, principalmente quando precisamos alterar essas informações
